@@ -3,6 +3,7 @@
 __author__ = "Sekiwere Samuel"
 
 import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import json
 import base64
 # from settings import config
@@ -13,12 +14,14 @@ import time
 import psycopg2
 import psycopg2.extras
 
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 dbconfig = {
-    'dbname': 'dhis2_integrator',
-    'host': 'localhost',
-    'port': '5432',
-    'user': '',
-    'password': '',
+    'db_name': 'dhis2-integrator',
+    'db_host': 'localhost',
+    'db_port': '5432',
+    'db_user': 'postgres',
+    'db_passwd': 'postgres',
 }
 
 config = {
@@ -71,18 +74,15 @@ def get_start_and_end_date(year, month):
     return start_month.strftime('%Y-%m-%d'), start_next_month.strftime('%Y-%m-%d')
 
 
-def post_data_to_dhis2(url, data, params={}, method="POST"):
-    user_pass = '{0}:{1}'.format(config['dhis2_username'], config['dhis2_password'])
+def read_from_dhis2(url, username, password):
+    user_pass = '{0}:{1}'.format(username, password)
     coded = base64.b64encode(user_pass.encode())
     headers = {
         'Content-Type': 'application/json',
         'Authorization': 'Basic ' + coded.decode()
     }
 
-    response = requests.post(
-	url, data=data, headers=headers,
-	verify=False, params=params
-    )
+    response = requests.get(url, headers=headers, verify=False)
     return response
 
 
@@ -109,5 +109,63 @@ conn = psycopg2.connect(
     "dbname=" + dbconfig["db_name"] + " host= " + dbconfig["db_host"] + " port=" + dbconfig["db_port"] +
     " user=" + dbconfig["db_user"] + " password=" + dbconfig["db_passwd"])
 cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+cur.execute(
+        "SELECT id, source, destination, source_url, source_username, source_password "
+        "FROM dhis2_instance_pair WHERE is_active = TRUE")
+instance_pairs = cur.fetchall()
+for pair in instance_pairs:
+    print(
+        "Dealing with instance [ID: {0}, Souece: {1}, Destination: {2}]".format(
+        pair['id'], pair['source'], pair['destination']))
+    # Now work the datasets to sync for this instance pair
+    cur.execute(
+        "SELECT dataset_id, dataset_name, reporting_frequency, include_deleted "
+        "FROM sync_datasets WHERE instance_pair_id = %s", [pair['id']])
+    sync_datasets = cur.fetchall()
+    for dataset in sync_datasets:
+        print("Gonna Sync dataSet: [{0}: {1}]".format(dataset['dataset_id'], dataset['dataset_name']))
+        reporting_frequency = dataset['reporting_frequency']
+
+        cur.execute(
+            "SELECT dhis2_name, dhis2_id FROM orgunits WHERE instance_pair_id = %s LIMIT 1", [pair['id']])
+        orgunits = cur.fetchall()
+        for orgunit in orgunits:
+            print("Reading data values for [Orgunit: {0} - {1}]".format(
+                orgunit['dhis2_id'], orgunit['dhis2_name']))
+
+            # If reporting frequency is daily
+            if reporting_frequency == 'daily':
+                start_date = datetime.date(year, 1, 1)
+                if year != now.year and year < now.year:
+                    end_date = datetime.date(year, 12, 31)
+                else:
+                    end_date = datetime.date(year, now.month, now.day)
+                delta = datetime.timedelta(days=1)
+                print("\tStart-Date: {0}, End-Date: {1}".format(start_date, end_date))
+                while start_date <= end_date:
+                    # print(start_date)
+                    period = start_date.strftime('%Y%m%d') # use this as period
+                    url = pair['source_url'] + "dataSet={0}&orgUnit={1}&period={2}".format(
+                            dataset['dataset_id'], orgunit['dhis2_id'], period)
+                    # print(url)
+                    response = read_from_dhis2(url, pair['source_username'], pair['source_password'])
+                    print(response.json())
+                    response_obj = response.json()
+                    if 'dataValues' in response_obj:
+                        # create payload to submit
+                        payload = {
+                            'orgUnit': response_obj['orgUnit'],
+                            'period': response_obj['period'],
+                            'attributeOptionCombo': response_obj['dataValues'][0]['attributeOptionCombo'],
+                            'dataValues':[
+                                {
+                                    'dataElement': i['dataElement'],
+                                    'value': i['value'],
+                                    'categoryOptionCombo': i['categoryOptionCombo']
+                                } for i in response_obj['dataValues']]
+                        }
+                        print(payload)
+                    start_date += delta
 
 conn.close()
