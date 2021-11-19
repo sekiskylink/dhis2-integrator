@@ -180,13 +180,13 @@ for pair in instance_pairs:
                     print("Gonna handle records for: {0}".format(district))
                     cur.execute(
                         "SELECT dhis2_name, dhis2_id FROM orgunits WHERE instance_pair_id = %s "
-                        " AND split_part(dhis2_path, '/', 4) = %s AND dhis2_level::int > '3' LIMIT 5", [pair['id'], district['dhis2_id']]) # XX remove limit
+                        " AND split_part(dhis2_path, '/', 4) = %s AND dhis2_level::int > '3' ", [pair['id'], district['dhis2_id']]) # XX remove limit
                     orgunits = cur.fetchall()
                     # print(orgunits)
                     # sys.exit(1)
                     dataValuesTotals = {}
                     attributeOptionCombo = ""
-                    for orgunit in orgunits[:10]:
+                    for orgunit in orgunits:
 
                         url = pair['source_url'] + "dataSet={0}&orgUnit={1}&period={2}".format(
                                 dataset['dataset_id'], orgunit['dhis2_id'], period)
