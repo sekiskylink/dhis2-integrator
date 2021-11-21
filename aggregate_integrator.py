@@ -176,7 +176,7 @@ for pair in instance_pairs:
                 period = start_date.strftime('%Y%m%d') # use this as period
                 print("GENERATING FOR PERIOD: {0}".format(period))
 
-                for district in districts[:1]:
+                for district in districts:
                     print("Gonna handle records for: {0}".format(district))
                     cur.execute(
                         "SELECT dhis2_name, dhis2_id FROM orgunits WHERE instance_pair_id = %s "
