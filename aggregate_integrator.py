@@ -145,8 +145,7 @@ for pair in instance_pairs:
         reporting_frequency = dataset['reporting_frequency']
 
         cur.execute(
-            "SELECT dhis2_name, dhis2_id FROM orgunits WHERE dhis2_level='3' AND instance_pair_id = %s "
-            " AND dhis2_name like '%%District' AND dhis2_name <> '1 Test District'", [pair['id']])
+            "SELECT dhis2_name, dhis2_id FROM orgunits WHERE dhis2_level='3' AND instance_pair_id = %s ", [pair['id']])
         districts = cur.fetchall()
 
         if reporting_frequency == 'daily':
