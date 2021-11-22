@@ -41,8 +41,8 @@ config = {
 
 cmd = sys.argv[1:]
 opts, args = getopt.getopt(
-    cmd, 'cdy:m:p:h',
-    ['current_date', 'direct_sync', 'year', 'month', 'period', 'help'])
+    cmd, 'cdy:m:p:n:h',
+    ['current_date', 'direct_sync', 'year', 'month', 'period', 'days_back', 'help'])
 
 # use current month as default
 now = datetime.datetime.now()
@@ -51,6 +51,8 @@ month = now.month
 DIRECT_SENDING = False
 USE_CURRENT_DATE = False
 specific_period = ""
+USE_DAYS_BACK = False
+days_back = 0
 
 for option, parameter in opts:
     if option in ['-d', '--direct_sync']:
@@ -71,15 +73,25 @@ for option, parameter in opts:
             pass
     if option in ['-p', '--period']:
         specific_period = parameter
+    if option in ['-n', '--days_back']:
+        days_back = parameter
+        try:
+            days_back = int(days_back)
+            if days_back:
+                USE_DAYS_BACK = True
+        except:
+            pass
+
     if option in ['-h', '--help']:
         print("A script to generate aggregate datavalues of a dataset to district level for submitting to ")
         print("another DHIS2 instance via dispatcher2 or another data exhange middleware.")
         print("")
-        print("Usage: python aggregate_integrator.py [-d ] [-c <current-date>] [-y <year>] [-m <month>] [-p <period>]")
+        print("Usage: python aggregate_integrator.py [-d ] [-c ] [-y <year>] [-m <month>] [-p <period>] [-n <days>]")
         print("-d Direct synchronisation without use of data exchange middleware.")
         print("-c --current_date Whether to generate values only for the date when script is run.")
         print("-y --year The year for which to generate vales.")
         print("-m --month The month for which to generate/pull values before submission.")
+        print("-n --days_back Generate values pre dating n days back.")
         print("-p --period The DHIS 2 period used for pulling data from source instance.")
         print("-h --help This message.")
         sys.exit(2)
@@ -166,10 +178,14 @@ for pair in instance_pairs:
                 except:
                     start_date = datetime.date(now.year, now.month, now.day)
                     end_date = start_date
+            if USE_DAYS_BACK:
+                start_date = datetime.date(now.year, now.month, now.day)
+                end_date = datetime.date(now.year, now.month, now.day)
+                start_date -= datetime.timedelta(days=days_back)
 
             delta = datetime.timedelta(days=1)
             print("\tStart-Date: {0}, End-Date: {1}".format(start_date, end_date))
-            # sys.exit(1)
+            sys.exit(1)
             while start_date <= end_date:
                 # print(start_date)
                 period = start_date.strftime('%Y%m%d') # use this as period
