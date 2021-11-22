@@ -185,7 +185,7 @@ for pair in instance_pairs:
 
             delta = datetime.timedelta(days=1)
             print("\tStart-Date: {0}, End-Date: {1}".format(start_date, end_date))
-            sys.exit(1)
+            # sys.exit(1)
             while start_date <= end_date:
                 # print(start_date)
                 period = start_date.strftime('%Y%m%d') # use this as period
