@@ -41,8 +41,8 @@ config = {
 
 cmd = sys.argv[1:]
 opts, args = getopt.getopt(
-    cmd, 'cdy:m:p:n:h',
-    ['current_date', 'direct_sync', 'year', 'month', 'period', 'days_back', 'help'])
+    cmd, 'cdy:m:p:n:l:h',
+    ['current_date', 'direct_sync', 'year', 'month', 'period', 'days_back', 'district_list', 'help'])
 
 # use current month as default
 now = datetime.datetime.now()
@@ -53,6 +53,7 @@ USE_CURRENT_DATE = False
 specific_period = ""
 USE_DAYS_BACK = False
 days_back = 0
+district_list = ""
 
 for option, parameter in opts:
     if option in ['-d', '--direct_sync']:
@@ -81,6 +82,8 @@ for option, parameter in opts:
                 USE_DAYS_BACK = True
         except:
             pass
+    if option in ['-l', '--district_list']:
+        district_list = parameter
 
     if option in ['-h', '--help']:
         print("A script to generate aggregate datavalues of a dataset to district level for submitting to ")
@@ -156,9 +159,24 @@ for pair in instance_pairs:
         print("Gonna Sync dataSet: [{0}: {1}]".format(dataset['dataset_id'], dataset['dataset_name']))
         reporting_frequency = dataset['reporting_frequency']
 
-        cur.execute(
+        districtSQL = (
             "SELECT dhis2_name, dhis2_id FROM orgunits WHERE dhis2_level='3' "
-            "AND instance_pair_id = %s ORDER BY priority, dhis2_name", [pair['id']])
+            "AND is_active = TRUE AND instance_pair_id = %s "
+        )
+        if district_list:
+            passed_districts = [d.strip() for d in district_list.split(',')]
+            district_array = str(passed_districts).replace(
+                '[', '{').replace(']', '}').replace("\'", '\"').replace('u', '')
+            districtSQL += " AND dhis2_name = ANY('{0}'::TEXT[]) ".format(district_array)
+
+        districtSQL += " ORDER BY priority, dhis2_name"
+        # print(">>>>>>>", districtSQL)
+        #sys.exit(1)
+        #
+        cur.execute(districtSQL, [pair['id']])
+        # cur.execute(
+        #     "SELECT dhis2_name, dhis2_id FROM orgunits WHERE dhis2_level='3' "
+        #     "AND instance_pair_id = %s ORDER BY priority, dhis2_name", [pair['id']])
         districts = cur.fetchall()
 
         if reporting_frequency == 'daily':
