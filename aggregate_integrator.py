@@ -46,12 +46,14 @@ opts, args = getopt.getopt(
 
 # use current month as default
 now = datetime.datetime.now()
+date_now = datetime.date(now.year, now.month, now.day)
 year = now.year
 month = now.month
 DIRECT_SENDING = False
 USE_CURRENT_DATE = False
-specific_period = ""
 USE_DAYS_BACK = False
+MONTH_DEFINED = False
+specific_period = ""
 days_back = 0
 district_list = ""
 
@@ -68,6 +70,7 @@ for option, parameter in opts:
             pass
     if option in ['-m', '--month']:
         month = parameter
+        MONTH_DEFINED = True
         try:
             month = int(month)
         except:
@@ -99,6 +102,8 @@ for option, parameter in opts:
         print("-l --district_list A string of comma-separated district names")
         print("-h --help This message.")
         sys.exit(2)
+
+MONTH_DAYS = {1: 31, 3: 31, 4: 30, 5: 31, 6: 30, 7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31}
 
 def get_start_and_end_date(year, month):
     start_month = datetime.datetime(year, month, 1)
@@ -184,12 +189,24 @@ for pair in instance_pairs:
             if USE_CURRENT_DATE:
                 start_date = datetime.date(now.year, now.month, now.day)
             else:
-                start_date = datetime.date(year, 1, 1)
+                if MONTH_DEFINED:
+                    start_date = datetime.date(year, month, 1)
+                else:
+                    start_date = datetime.date(year, 1, 1)
 
             if year != now.year and year < now.year:
                 end_date = datetime.date(year, 12, 31)
             else:
-                end_date = datetime.date(year, now.month, now.day)
+                if MONTH_DEFINED:
+                    if month == 2:
+                        try:
+                            end_date = datetime.date(year, month, 28)
+                        except:
+                            end_date = datetime.date(year, month, 29)
+                    else:
+                        end_date = datetime.date(year, month, MONTH_DAYS[month])
+                else:
+                    end_date = datetime.date(year, now.month, now.day)
 
             if specific_period:
                 try:
@@ -205,6 +222,10 @@ for pair in instance_pairs:
 
             delta = datetime.timedelta(days=1)
             print("\tStart-Date: {0}, End-Date: {1}".format(start_date, end_date))
+            if start_date > date_now:
+                print("Start-Date: {0} is ahead of today {1}".format(start_date, date_now))
+                sys.exit(1)
+
             # sys.exit(1)
             while start_date <= end_date:
                 # print(start_date)
