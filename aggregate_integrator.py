@@ -244,7 +244,7 @@ for pair in instance_pairs:
                     attributeOptionCombo = ""
                     for orgunit in orgunits:
 
-                        url = pair['source_url'] + "dataSet={0}&orgUnit={1}&period={2}".format(
+                        url = pair['source_url'] + "/dataValueSets?" + "dataSet={0}&orgUnit={1}&period={2}".format(
                                 dataset['dataset_id'], orgunit['dhis2_id'], period)
                         response = read_from_dhis2(url, pair['source_username'], pair['source_password'])
                         try:
