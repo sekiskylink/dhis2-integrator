@@ -237,7 +237,7 @@ for pair in instance_pairs:
                 print("GENERATING FOR PERIOD: {0}".format(period))
                 # print("districts:", districts)
 
-                for district in districts[:2]:  # now only make 147 calls
+                for district in districts:  # now only make 147 calls
                     print("Gonna handle records for: {0}".format(district))
 
                     # read from SQL view
