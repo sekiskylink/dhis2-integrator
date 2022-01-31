@@ -303,7 +303,10 @@ for pair in instance_pairs:
                                 if DIRECT_SENDING:
                                     pass
                                 else:
-                                    queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
+                                    try:
+                                        queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
+                                    except:
+                                        print("Failed to submit to dipatcher2")
 
                                 j = i
 
