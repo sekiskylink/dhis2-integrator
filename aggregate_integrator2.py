@@ -306,7 +306,13 @@ for pair in instance_pairs:
                                     try:
                                         queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
                                     except:
-                                        print("Failed to submit to dipatcher2")
+                                        time.sleep(6)
+                                        print("FAILED to submit to dipatcher2. Disrictct: {0}:{1}, Period: {2}".format(
+                                            district['dhis2_name'], district['dhis2_id'], period))
+                                        try:
+                                            queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
+                                        except:
+                                            pass
 
                                 j = i
 
