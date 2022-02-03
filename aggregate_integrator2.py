@@ -7,6 +7,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import json
 import base64
 # from settings import config
+import logging
 import getopt
 import sys
 import datetime
@@ -38,6 +39,11 @@ config = {
     'dhis2_password': '',
     'dhis2_url': '',
 }
+
+logging.basicConfig(
+    format='%(asctime)s:%(levelname)s:%(message)s', filename='/tmp/integration.log',
+    datefmt='%Y-%m-%d %I:%M:%S', level=logging.DEBUG
+)
 
 cmd = sys.argv[1:]
 opts, args = getopt.getopt(
@@ -160,6 +166,9 @@ for pair in instance_pairs:
     print(
         "Dealing with instance [ID: {0}, Souece: {1}, Destination: {2}]".format(
         pair['id'], pair['source'], pair['destination']))
+    logging.info(
+        "Dealing with instance [ID: {0}, Souece: {1}, Destination: {2}]".format(
+        pair['id'], pair['source'], pair['destination']))
     # Now work the datasets to sync for this instance pair
     cur.execute(
         "SELECT dataset_id, dataset_name, reporting_frequency, include_deleted "
@@ -167,6 +176,7 @@ for pair in instance_pairs:
     sync_datasets = cur.fetchall()
     for dataset in sync_datasets:
         print("Gonna Sync dataSet: [{0}: {1}]".format(dataset['dataset_id'], dataset['dataset_name']))
+        logging.info("Gonna Sync dataSet: [{0}: {1}]".format(dataset['dataset_id'], dataset['dataset_name']))
         reporting_frequency = dataset['reporting_frequency']
 
         districtSQL = (
@@ -226,6 +236,7 @@ for pair in instance_pairs:
 
             delta = datetime.timedelta(days=1)
             print("\tStart-Date: {0}, End-Date: {1}".format(start_date, end_date))
+            logging.info("\tStart-Date: {0}, End-Date: {1}".format(start_date, end_date))
             if start_date > date_now:
                 print("Start-Date: {0} is ahead of today {1}".format(start_date, date_now))
                 sys.exit(1)
@@ -235,9 +246,11 @@ for pair in instance_pairs:
                 # print(start_date)
                 period = start_date.strftime('%Y%m%d') # use this as period
                 print("GENERATING FOR PERIOD: {0}".format(period))
+                logging.info("GENERATING FOR PERIOD: {0}".format(period))
                 # print("districts:", districts)
 
                 for district in districts:  # now only make 147 calls
+                    logging.info("Gonna handle records for: {0}".format(district))
                     print("Gonna handle records for: {0}".format(district))
 
                     # read from SQL view
@@ -250,16 +263,19 @@ for pair in instance_pairs:
 
                     url = pair['source_url'] + "/sqlViews/{0}/data.json?".format(SQLVIEW) + sqlview_params
                     print(url)
+                    logging.info("Fetching: {0}".format(url))
                     response = read_from_dhis2(url, pair['source_username'], pair['source_password'])
                     try:
                         response_obj = response.json()
                         # print(response.json())
                     except:
                         print("WARNING: Failed to fetch records from SQL VIEW: {0}".format(SQLVIEW))
+                        logging.error("Failed to fetch records from SQL VIEW: {0}".format(SQLVIEW))
                         continue
                     if response_obj["listGrid"]["rows"]:  # we have some results, (value, dataElement, categoryOptionCombo, attributeOptionCombo)
                         aggregates = response_obj["listGrid"]["rows"]
                         print("Got some results: ", len(aggregates))
+                        logging.info("Got {0} results: ".format(len(aggregates)))
 
                         aggregates_by_attroptcombo = {}  # a dictionary with list of results for each attributeOptionCombo
 
@@ -270,6 +286,7 @@ for pair in instance_pairs:
                                 aggregates_by_attroptcombo[agg[3]] = [agg]
 
                         print(aggregates_by_attroptcombo)
+                        logging.info(aggregates_by_attroptcombo)
                         for aoc, v in aggregates_by_attroptcombo.items():
                             aggregates_length = len(v)
                             MAX_CHUNK_SIZE = 10  # just send data values in chunks of MAX_CHUNK_SIZE
@@ -300,6 +317,7 @@ for pair in instance_pairs:
                                     'report_type': '{0}_{1}'.format(pair['source'], pair['destination'])
                                 }
                                 print(">>>>>> Period: {0} =====> {1}".format(period, payload))
+                                logging.info(">>>>>> Period: {0} =====> {1}".format(period, payload))
                                 if DIRECT_SENDING:
                                     pass
                                 else:
@@ -309,10 +327,13 @@ for pair in instance_pairs:
                                         time.sleep(6)
                                         print("FAILED to submit to dipatcher2. Disrictct: {0}:{1}, Period: {2}".format(
                                             district['dhis2_name'], district['dhis2_id'], period))
+                                        logging.warning("FAILED to submit to dipatcher2. Disrictct: {0}:{1}, Period: {2}".format(
+                                            district['dhis2_name'], district['dhis2_id'], period))
                                         try:
                                             queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
                                         except:
-                                            pass
+                                            logging.error("FAILED to submit to dipatcher2. Disrictct: {0}:{1}, Period: {2}".format(
+                                            district['dhis2_name'], district['dhis2_id'], period))
 
                                 j = i
 
