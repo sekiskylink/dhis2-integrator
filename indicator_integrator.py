@@ -222,7 +222,7 @@ for pair in instance_pairs:
                     response_obj = response.json()
                 except:
                     pass
-                rows = response_obj["rows"][:2] # <><><> Remove this
+                rows = response_obj["rows"] # <><><> Remove this
                 metadata = response_obj["metaData"]
 
                 for row in rows:
