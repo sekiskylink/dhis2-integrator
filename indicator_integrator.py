@@ -26,8 +26,7 @@ dbconfig = {
 
 config = {
     # dispatcher2 confs
-    #'dispatcher2_queue_url':'http://localhost:9191/queue',
-    'dispatcher2_queue_url':'http://iol.gcinnovate.com/queue',
+    'dispatcher2_queue_url':'http://localhost:9191/queue',
     'dispatcher2_username': 'admin',
     'dispatcher2_password': 'admin',
     'dispatcher2_source': 'epivac',
@@ -169,6 +168,7 @@ for pair in instance_pairs:
 
         if reporting_frequency == 'daily':
             if USE_CURRENT_DATE:
+                print("Using Curren Date")
                 start_date = datetime.date(now.year, now.month, now.day)
             else:
                 if MONTH_DEFINED:
@@ -190,6 +190,11 @@ for pair in instance_pairs:
                 else:
                     end_date = datetime.date(year, now.month, now.day)
 
+            if USE_DAYS_BACK:
+                start_date = datetime.date(now.year, now.month, now.day)
+                end_date = datetime.date(now.year, now.month, now.day)
+                start_date -= datetime.timedelta(days=days_back)
+
             if specific_period:
                 try:
                     start_date = datetime.datetime.strptime(specific_period, '%Y%m%d').date()
@@ -197,18 +202,15 @@ for pair in instance_pairs:
                 except:
                     start_date = datetime.date(now.year, now.month, now.day)
                     end_date = start_date
-            if USE_DAYS_BACK:
-                start_date = datetime.date(now.year, now.month, now.day)
-                end_date = datetime.date(now.year, now.month, now.day)
-                start_date -= datetime.timedelta(days=days_back)
 
             delta = datetime.timedelta(days=1)
             print("\tStart-Date: {0}, End-Date: {1}".format(start_date, end_date))
+
             if start_date > date_now:
                 print("Start-Date: {0} is ahead of today {1}".format(start_date, date_now))
                 sys.exit(1)
 
-            # sys.exit(1)
+            sys.exit(1)
             while start_date <= end_date:
                 # print(start_date)
                 period = start_date.strftime('%Y%m%d') # use this as period
@@ -252,7 +254,11 @@ for pair in instance_pairs:
                     }
                     print(">>>>>> Period: {0} =====> {1}".format(period, payload))
 
-                    queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
+                    try:
+                        queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
+                    except:
+                        pass
+                        print("Failed to queue for: ", period)
 
                 start_date += delta
 
