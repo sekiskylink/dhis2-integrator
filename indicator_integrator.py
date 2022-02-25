@@ -208,7 +208,6 @@ for pair in instance_pairs:
 
             if start_date > date_now:
                 print("Start-Date: {0} is ahead of today {1}".format(start_date, date_now))
-                sys.exit(1)
 
             sys.exit(1)
             while start_date <= end_date:
