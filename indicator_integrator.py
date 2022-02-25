@@ -209,7 +209,6 @@ for pair in instance_pairs:
             if start_date > date_now:
                 print("Start-Date: {0} is ahead of today {1}".format(start_date, date_now))
 
-            sys.exit(1)
             while start_date <= end_date:
                 # print(start_date)
                 period = start_date.strftime('%Y%m%d') # use this as period
