@@ -251,9 +251,7 @@ for pair in instance_pairs:
                         'report_type': '{0}_{1}'.format(pair['source'], pair['destination'])
                     }
                     print(">>>>>> Period: {0} =====> {1}".format(period, payload))
-                if DIRECT_SENDING:
-                    pass
-                else:
+
                     queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
 
                 start_date += delta
