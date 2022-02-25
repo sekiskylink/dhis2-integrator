@@ -256,6 +256,7 @@ for pair in instance_pairs:
                         queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
                     except:
                         pass
+                        time.sleep(4)
                         print("Failed to queue for: ", period)
 
                 start_date += delta
