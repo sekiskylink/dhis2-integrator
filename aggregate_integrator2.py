@@ -27,8 +27,7 @@ dbconfig = {
 
 config = {
     # dispatcher2 confs
-    #'dispatcher2_queue_url':'http://localhost:9191/queue',
-    'dispatcher2_queue_url':'http://iol.gcinnovate.com/queue',
+    'dispatcher2_queue_url':'http://localhost:9191/queue',
     'dispatcher2_username': 'admin',
     'dispatcher2_password': 'admin',
     'dispatcher2_source': 'epivac',
@@ -59,7 +58,7 @@ DIRECT_SENDING = False
 USE_CURRENT_DATE = False
 USE_DAYS_BACK = False
 MONTH_DEFINED = False
-SQLVIEW = "TLCBynaq2If"
+SQLVIEW = "mTmSg3sfNrK"
 specific_period = ""
 days_back = 0
 district_list = ""
