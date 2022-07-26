@@ -19,7 +19,7 @@ from operator import itemgetter
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 dbconfig = {
-    'db_name': 'dhis2integrator',
+    'db_name': 'dhis2-integrator',
     'db_host': 'localhost',
     'db_port': '5432',
     'db_user': 'postgres',
