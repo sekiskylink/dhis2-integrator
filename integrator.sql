@@ -32,6 +32,19 @@ CREATE TABLE orgunits(
     dhis2_parent TEXT NOT NULL DEFAULT '',
     dhis2_level TEXT NOT NULL DEFAULT '',
     priority INTEGER,
+    is_active BOOLEAN DEFAULT TRUE,
+    created TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE indicator_mapping(
+    id SERIAL PRIMARY KEY NOT NULL,
+    instance_pair_id INTEGER NOT NULL REFERENCES dhis2_instance_pair(id),
+    name TEXT NOT NULL DEFAULT '',
+    source_indicator_id TEXT NOT NULL DEFAULT '',
+    dataset TEXT NOT NULL DEFAULT '',
+    dataelement TEXT NOT NULL DEFAULT '',
+    category_option_combo TEXT NOT NULL DEFAULT '',
     created TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

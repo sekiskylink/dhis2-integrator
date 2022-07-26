@@ -13,11 +13,13 @@ import datetime
 import time
 import psycopg2
 import psycopg2.extras
+from itertools import groupby
+from operator import itemgetter
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 dbconfig = {
-    'db_name': 'dhis2-integrator',
+    'db_name': 'dhis2integrator',
     'db_host': 'localhost',
     'db_port': '5432',
     'db_user': 'postgres',
@@ -53,7 +55,6 @@ month = now.month
 USE_CURRENT_DATE = False
 USE_DAYS_BACK = False
 MONTH_DEFINED = False
-DESTINATION_DATAELEMENT = "t6QQab3Tnc1"
 DEFAULT_ATTRIBUTE_OPTION_COMBO = "HllvX50cXC0"
 DEFAULT_CATEGORY_COMBO = "HllvX50cXC0"
 specific_period = ""
@@ -62,12 +63,8 @@ district_list = ""
 indicator = ""
 
 for option, parameter in opts:
-    if option in ['-d', '--dataelement']:
-        DESTINATION_DATAELEMENT = parameter
     if option in ['-c', '--current_date']:
         USE_CURRENT_DATE = True
-    if option in ['-i', '--indicator']:
-        indicator = parameter
 
     if option in ['-y', '--year']:
         year = parameter
@@ -100,9 +97,7 @@ for option, parameter in opts:
         print("another DHIS2 instance via dispatcher2 or another data exhange middleware.")
         print("")
         print("Usage: python inidicator_integrator.py [-d ] [-c ] [-y <year>] [-m <month>] [-p <period>] [-n <days>] [-l <district_list>]")
-        print("-d -- destination dataElement .")
         print("-c --current_date Whether to generate values only for the date when script is run.")
-        print("-i --indicator The inidicator id")
         print("-y --year The year for which to generate vales.")
         print("-m --month The month for which to generate/pull values before submission.")
         print("-n --days_back Generate values pre dating n days back.")
@@ -157,6 +152,21 @@ for pair in instance_pairs:
     print(
         "Dealing with instance [ID: {0}, Souece: {1}, Destination: {2}]".format(
         pair['id'], pair['source'], pair['destination']))
+    cur.execute(
+        "SELECT name, source_indicator_id, dataset, dataelement, category_option_combo "
+        "FROM indicator_mapping WHERE instance_pair_id = %s", [pair['id']])
+    our_mapping = cur.fetchall()
+    indicators = ';'.join([i[1] for i in our_mapping])
+    print("Indicators: ", indicators)
+    mappings = {}
+    for m in our_mapping:
+        mappings[m['source_indicator_id']] = {
+            'dataset': m['dataset'],
+            'dataelement': m['dataelement'],
+            'category_option_combo': m['category_option_combo']
+        }
+    print("MAPPING: ", mappings)
+    # sys.exit(1)
     # Now work the datasets to sync for this instance pair
     cur.execute(
         "SELECT dataset_id, dataset_name, reporting_frequency, include_deleted "
@@ -213,8 +223,8 @@ for pair in instance_pairs:
                 # print(start_date)
                 period = start_date.strftime('%Y%m%d') # use this as period
                 print("GENERATING FOR PERIOD: {0}".format(period))
-                url = pair['source_url'] + "/analytics?dimension=" + "dx:{0},pe:{1},ou:LEVEL-{2}".format(
-                        indicator, period, 3)  #  LEVEL defaults to 3 for districts
+                url = pair['source_url'] + "/analytics?dimension=" + "dx:{0}&dimension=pe:{1}&dimension=ou:LEVEL-{2}&paging=false".format(
+                        indicators, period, 3)  #  LEVEL defaults to 3 for districts
                 print("URL: [{0}] ".format(url))
                 # sys.exit(1)
                 try:
@@ -222,24 +232,40 @@ for pair in instance_pairs:
                     response_obj = response.json()
                 except:
                     pass
+                    print("We have an Exception")
+                    # sys.exit(1)
                 rows = response_obj["rows"] # <><><> Remove this
+                # sort the results based ob ou which is in position 2 for each row
+                rows = sorted(rows, key=lambda x: x[2])
+
+                # group records for each ou together
+                grouped_rows = [list(group) for key, group in groupby(rows, itemgetter(2))]
+                print("We got our data", grouped_rows)
                 metadata = response_obj["metaData"]
 
-                for row in rows:
-                    orgUnit = row[2]
-                    orgUnitName = metadata["items"][orgUnit]["name"]
-                    value = int(float(row[3]))
+                for group in grouped_rows:
+                    orgUnit = ""
+                    orgUnitName = ""
+                    dataValues = []
+                    for row in group:
+                        if not orgUnit:
+                            orgUnit = row[2]
+                        if not orgUnitName:
+                            orgUnitName = metadata["items"][orgUnit]["name"]
+
+                        value = int(float(row[3]))
+                        dataValues.append({
+                            'dataElement': mappings[row[0]]['dataelement'],
+                            'value': value,
+                            'categoryOptionCombo': mappings[row[0]]['category_option_combo']
+                        })
+
 
                     payload = {
                         'orgUnit': orgUnit,
                         'period': period,
                         'attributeOptionCombo': DEFAULT_ATTRIBUTE_OPTION_COMBO,
-                        'dataValues':[
-                            {
-                                'dataElement': DESTINATION_DATAELEMENT,
-                                'value': value,
-                                'categoryOptionCombo': DEFAULT_CATEGORY_COMBO
-                            }]
+                        'dataValues': dataValues
                     }
                     extra_params = {
                         'year': year,
@@ -250,7 +276,7 @@ for pair in instance_pairs:
                         'is_qparams': "f",
                         'report_type': '{0}_{1}'.format(pair['source'], pair['destination'])
                     }
-                    print(">>>>>> Period: {0} =====> {1}".format(period, payload))
+                    print(">>>Period: {0}, === OrgUnit: {1} ===, Payload: {2}".format(period, orgUnitName, payload))
 
                     try:
                         queue_in_dispatcher2(json.dumps(payload), ctype="json", params=extra_params)
