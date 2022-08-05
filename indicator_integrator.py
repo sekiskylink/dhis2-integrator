@@ -19,7 +19,7 @@ from operator import itemgetter
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 dbconfig = {
-    'db_name': 'dhis2-integrator',
+    'db_name': 'dhis2integrator',
     'db_host': 'localhost',
     'db_port': '5432',
     'db_user': 'postgres',
@@ -56,7 +56,6 @@ USE_CURRENT_DATE = False
 USE_DAYS_BACK = False
 MONTH_DEFINED = False
 DEFAULT_ATTRIBUTE_OPTION_COMBO = "HllvX50cXC0"
-DEFAULT_CATEGORY_COMBO = "HllvX50cXC0"
 specific_period = ""
 days_back = 0
 district_list = ""
@@ -264,7 +263,6 @@ for pair in instance_pairs:
                     payload = {
                         'orgUnit': orgUnit,
                         'period': period,
-                        'attributeOptionCombo': DEFAULT_ATTRIBUTE_OPTION_COMBO,
                         'dataValues': dataValues
                     }
                     extra_params = {
@@ -276,6 +274,8 @@ for pair in instance_pairs:
                         'is_qparams': "f",
                         'report_type': '{0}_{1}'.format(pair['source'], pair['destination'])
                     }
+                    payload['attributeOptionCombo'] = DEFAULT_ATTRIBUTE_OPTION_COMBO
+                    payload['completeDate'] = now.strftime('%Y-%m-%d')
                     print(">>>Period: {0}, === OrgUnit: {1} ===, Payload: {2}".format(period, orgUnitName, payload))
 
                     try:
